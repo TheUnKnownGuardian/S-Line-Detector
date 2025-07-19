@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S-Line Detector - Supernatural Connection Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e);
+            font-family: 'Courier New', monospace;
+            color: #ffffff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .title {
+            font-size: 3em;
+            color: #ff0040;
+            text-shadow: 0 0 20px #ff0040;
+            margin-bottom: 10px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #888;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 20px #ff0040; }
+            to { text-shadow: 0 0 30px #ff0040, 0 0 40px #ff0040; }
+        }
+
+        .camera-container {
+            position: relative;
+            border: 3px solid #ff0040;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255, 0, 64, 0.5);
+            max-width: 640px;
+            width: 100%;
+        }
+
+        #video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff0040, #ff4080);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.1em;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(255, 0, 64, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 0, 64, 0.5);
+        }
+
+        .btn:disabled {
+            background: #444;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 0, 64, 0.1);
+            border: 1px solid #ff0040;
+            border-radius: 10px;
+            min-height: 50px;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .loading {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ff0040;
+            border-radius: 15px;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .line-count {
+            font-size: 2.5em;
+            color: #ff0040;
+            margin: 10px 0;
+            text-shadow: 0 0 10px #ff0040;
+        }
+
+        .disclaimer {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8em;
+            color: #666;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        .line {
+            position: absolute;
+            background: linear-gradient(45deg, #ff0040, #ff8080);
+            border-radius: 5px;
+            box-shadow: 0 0 10px #ff0040;
+            animation: lineFloat 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes lineFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            33% { transform: translateY(-5px) rotate(1deg); }
+            66% { transform: translateY(5px) rotate(-1deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .overload {
+            animation: overloadFlash 0.5s infinite;
+        }
+
+        @keyframes overloadFlash {
+            0%, 100% { background-color: rgba(0, 0, 0, 0.7); }
+            50% { background-color: rgba(255, 0, 64, 0.3); }
+        }
+
+        @media (max-width: 768px) {
+            .title { font-size: 2em; }
+            .subtitle { font-size: 1em; }
+            .container { padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">S-LINE DETECTOR</h1>
+        <p class="subtitle">Reveal the invisible connections of intimacy</p>
+        
+        <div class="camera-container hidden" id="cameraContainer">
+            <video id="video" autoplay muted playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" id="startBtn">Initialize Scanner</button>
+            <button class="btn hidden" id="scanBtn" disabled>Scan S-Lines</button>
+            <button class="btn hidden" id="resetBtn">Reset Scanner</button>
+        </div>
+        
+        <div class="status" id="status">
+            Ready to detect supernatural connections...
+        </div>
+        
+        <div class="results hidden" id="results"></div>
+    </div>
+    
+    <div class="disclaimer">
+        For entertainment purposes only. Results are algorithmically generated and not based on actual supernatural abilities.
+    </div>
+
+    <script>
+        class SLineDetector {
+            constructor() {
+                this.video = document.getElementById('video');
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.isModelLoaded = false;
+                this.isScanning = false;
+                this.faceDetections = [];
+                this.sLines = [];
+                this.userHistory = this.loadUserHistory();
+                this.faceDetectionActive = false;
+                
+                this.initializeElements();
+                this.loadModels();
+            }
+
+            initializeElements() {
+                this.startBtn = document.getElementById('startBtn');
+                this.scanBtn = document.getElementById('scanBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.status = document.getElementById('status');
+                this.results = document.getElementById('results');
+                this.cameraContainer = document.getElementById('cameraContainer');
+
+                this.startBtn.addEventListener('click', () => this.startCamera());
+                this.scanBtn.addEventListener('click', () => this.scanSLines());
+                this.resetBtn.addEventListener('click', () => this.reset());
+            }
+
+            async loadModels() {
+                this.updateStatus('Loading supernatural detection models...');
+                try {
+                    await Promise.all([
+                        faceapi.nets.tinyFaceDetector.loadFromUri('/weights'),
+                        faceapi.nets.faceLandmark68Net.loadFromUri('/weights')
+                    ]);
+                    
+                    this.isModelLoaded = true;
+                    this.updateStatus('S-Line detection system ready...');
+                } catch (error) {
+                    console.error('Model loading error:', error);
+                    // Fallback to CDN if local loading fails
+                    try {
+                        await Promise.all([
+                            faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@latest/model'),
+                            faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api@latest/model')
+                        ]);
+                        this.isModelLoaded = true;
+                        this.updateStatus('S-Line detection system ready (CDN fallback)...');
+                    } catch (cdnError) {
+                        console.error('CDN fallback failed:', cdnError);
+                        this.isModelLoaded = true;
+                        this.updateStatus('S-Line detection system ready (simplified mode)...');
+                    }
+                }
+            }
+
+            /* REST OF THE CODE REMAINS EXACTLY THE SAME AS YOUR ORIGINAL */
+            async startCamera() {
+                if (!this.isModelLoaded) {
+                    this.updateStatus('Please wait for models to load...');
+                    return;
+                }
+
+                this.updateStatus('Accessing dimensional camera feed...');
+                
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: 'user', width: 640, height: 480 } 
+                    });
+                    this.video.srcObject = stream;
+                    
+                    this.video.onloadedmetadata = () => {
+                        this.canvas.width = this.video.videoWidth;
+                        this.canvas.height = this.video.videoHeight;
+                        this.cameraContainer.classList.remove('hidden');
+                        this.startBtn.classList.add('hidden');
+                        this.scanBtn.classList.remove('hidden');
+                        this.resetBtn.classList.remove('hidden');
+                        this.scanBtn.disabled = false;
+                        this.updateStatus('Camera activated. Ready to scan for S-Lines...');
+                        this.startFaceDetection();
+                    };
+                } catch (error) {
+                    this.updateStatus('Camera access denied. Please allow camera permissions.');
+                }
+            }
+
+            startFaceDetection() {
+                if (this.faceDetectionActive) return;
+                this.faceDetectionActive = true;
+                
+                const detectFaces = async () => {
+                    if (!this.faceDetectionActive) return;
+                    
+                    if (this.video.readyState === 4) {
+                        try {
+                            const detections = await faceapi.detectAllFaces(
+                                this.video, 
+                                new faceapi.TinyFaceDetectorOptions()
+                            ).withFaceLandmarks();
+                            
+                            this.faceDetections = detections;
+                            this.drawFaceBoxes();
+                        } catch (error) {
+                            this.faceDetections = [{
+                                detection: {
+                                    box: {
+                                        x: this.video.videoWidth * 0.25,
+                                        y: this.video.videoHeight * 0.2,
+                                        width: this.video.videoWidth * 0.5,
+                                        height: this.video.videoHeight * 0.6
+                                    }
+                                },
+                                landmarks: this.createMockLandmarks()
+                            }];
+                            this.drawFaceBoxes();
+                        }
+                    }
+                    
+                    if (this.faceDetectionActive && !this.isScanning) {
+                        requestAnimationFrame(detectFaces);
+                    }
+                };
+                detectFaces();
+            }
+
+            createMockLandmarks() {
+                const centerX = this.video.videoWidth * 0.5;
+                const centerY = this.video.videoHeight * 0.4;
+                
+                return {
+                    getLeftEye: () => [
+                        { x: centerX - 30, y: centerY },
+                        { x: centerX - 25, y: centerY - 5 },
+                        { x: centerX - 20, y: centerY }
+                    ],
+                    getRightEye: () => [
+                        { x: centerX + 20, y: centerY },
+                        { x: centerX + 25, y: centerY - 5 },
+                        { x: centerX + 30, y: centerY }
+                    ],
+                    getNose: () => [
+                        { x: centerX, y: centerY + 10 },
+                        { x: centerX - 2, y: centerY + 15 },
+                        { x: centerX + 2, y: centerY + 15 }
+                    ]
+                };
+            }
+
+            drawFaceBoxes() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                this.faceDetections.forEach(detection => {
+                    const { x, y, width, height } = detection.detection.box;
+                    this.ctx.strokeStyle = '#ff0040';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.strokeRect(x, y, width, height);
+                    
+                    this.ctx.strokeStyle = '#ff8080';
+                    this.ctx.lineWidth = 1;
+                    const centerX = x + width / 2;
+                    const centerY = y + height / 2;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(centerX - 20, centerY);
+                    this.ctx.lineTo(centerX + 20, centerY);
+                    this.ctx.moveTo(centerX, centerY - 20);
+                    this.ctx.lineTo(centerX, centerY + 20);
+                    this.ctx.stroke();
+                });
+            }
+
+            async scanSLines() {
+                if (this.faceDetections.length === 0) {
+                    this.faceDetections = [{
+                        detection: {
+                            box: {
+                                x: this.video.videoWidth * 0.25,
+                                y: this.video.videoHeight * 0.2,
+                                width: this.video.videoWidth * 0.5,
+                                height: this.video.videoHeight * 0.6
+                            }
+                        },
+                        landmarks: this.createMockLandmarks()
+                    }];
+                }
+
+                this.isScanning = true;
+                this.scanBtn.disabled = true;
+                this.clearSLines();
+
+                const scanSteps = [
+                    'Analyzing facial energy patterns...',
+                    'Detecting ethereal signatures...',
+                    'Mapping intimate connection traces...',
+                    'Calculating relationship resonance...',
+                    'Quantum entanglement analysis...',
+                    'Processing supernatural data...'
+                ];
+
+                for (let step of scanSteps) {
+                    this.updateStatus(step, true);
+                    await this.delay(800 + Math.random() * 1200);
+                }
+
+                const lineCount = this.calculateSLineCount();
+                await this.generateSLines(lineCount);
+                
+                this.displayResults(lineCount);
+                this.saveUserHistory(lineCount);
+                
+                this.isScanning = false;
+                this.scanBtn.disabled = false;
+            }
+
+            calculateSLineCount() {
+                const face = this.faceDetections[0];
+                if (!face) return 0;
+
+                const faceBox = face.detection.box;
+                const landmarks = face.landmarks;
+                
+                const faceRatio = faceBox.width / faceBox.height;
+                const eyeDistance = this.calculateEyeDistance(landmarks);
+                const faceSymmetry = this.calculateSymmetry(landmarks);
+                
+                const now = new Date();
+                const hour = now.getHours();
+                const isEvening = hour >= 18 && hour <= 23;
+                const isLateNight = hour >= 23 || hour <= 3;
+                const isWeekend = now.getDay() === 0 || now.getDay() === 6;
+                
+                const behaviorScore = this.calculateBehaviorScore();
+                
+                let baseScore = 0;
+                baseScore += (faceRatio * 30);
+                baseScore += (eyeDistance * 20);
+                baseScore += (faceSymmetry * 25);
+                baseScore += (behaviorScore * 15);
+                baseScore += Math.random() * 10;
+                
+                if (isEvening) baseScore += 15;
+                if (isLateNight) baseScore += 25;
+                if (isWeekend) baseScore += 10;
+                
+                if (this.userHistory.scanCount > 0) {
+                    const avgPrevious = this.userHistory.totalLines / this.userHistory.scanCount;
+                    baseScore = (baseScore * 0.7) + (avgPrevious * 0.3);
+                }
+                
+                return this.scoreToLineCount(baseScore);
+            }
+
+            async generateSLines(count) {
+                if (count === 0) return;
+
+                const face = this.faceDetections[0];
+                const faceBox = face.detection.box;
+                const headTop = faceBox.y - 20;
+                const headCenter = faceBox.x + faceBox.width / 2;
+
+                if (count >= 50) {
+                    this.results.classList.add('overload');
+                    this.updateStatus(`SYSTEM OVERLOAD - ${count} CONNECTIONS DETECTED!`, true);
+                }
+
+                const waves = count <= 10 ? 1 : Math.ceil(count / 15);
+                const linesPerWave = Math.ceil(count / waves);
+
+                for (let wave = 0; wave < waves; wave++) {
+                    const waveLineCount = Math.min(linesPerWave, count - (wave * linesPerWave));
+                    
+                    if (wave > 0) {
+                        this.updateStatus(`Detecting additional traces... Wave ${wave + 1}`, true);
+                        await this.delay(1500);
+                    }
+
+                    for (let i = 0; i < waveLineCount; i++) {
+                        await this.delay(100 + Math.random() * 200);
+                        this.createSLine(headCenter, headTop, i + (wave * linesPerWave), count);
+                    }
+                }
+            }
+
+            createSLine(centerX, topY, index, totalCount) {
+                const line = document.createElement('div');
+                line.className = 'line';
+                
+                const angle = (index / Math.max(totalCount - 1, 1)) * 360;
+                const distance = 50 + Math.random() * 100;
+                const length = 30 + Math.random() * 70;
+                const width = 2 + Math.random() * 4;
+                
+                const startX = centerX + Math.cos(angle * Math.PI / 180) * distance;
+                const startY = topY - Math.abs(Math.sin(angle * Math.PI / 180)) * 30;
+                
+                line.style.width = `${length}px`;
+                line.style.height = `${width}px`;
+                line.style.left = `${startX}px`;
+                line.style.top = `${startY}px`;
+                line.style.transform = `rotate(${angle + Math.random() * 60 - 30}deg)`;
+                line.style.opacity = 0.7 + Math.random() * 0.3;
+                line.style.animationDelay = `${Math.random() * 2}s`;
+                
+                if (totalCount > 20) {
+                    line.style.boxShadow = `0 0 ${5 + Math.random() * 10}px #ff0040`;
+                }
+                
+                this.cameraContainer.appendChild(line);
+                this.sLines.push(line);
+                
+                line.style.transform += ' scale(0)';
+                requestAnimationFrame(() => {
+                    line.style.transition = 'transform 0.5s ease-out';
+                    line.style.transform = line.style.transform.replace('scale(0)', 'scale(1)');
+                });
+            }
+
+            displayResults(count) {
+                let message, description, specialNote = '';
+                
+                if (count === 0) {
+                    message = 'No Intimate Connections Detected';
+                    description = 'Spiritually protected or blocked readings detected.';
+                } else if (count <= 2) {
+                    message = `${count} Connection${count > 1 ? 's' : ''} Detected`;
+                    description = 'Normal romantic activity levels identified.';
+                } else if (count <= 5) {
+                    message = `${count} Connections Detected`;
+                    description = 'Active social intimacy patterns observed.';
+                } else if (count <= 10) {
+                    message = `${count} Connections Detected`;
+                    description = 'High intimacy resonance levels detected.';
+                } else if (count <= 25) {
+                    message = `${count} Connections Detected`;
+                    description = 'Exceptional connection density recorded.';
+                    specialNote = 'Subject shows rare intimacy signatures.';
+                } else if (count <= 50) {
+                    message = `${count} Connections Detected`;
+                    description = 'RARE SUBJECT - Multiple quantum signatures detected.';
+                    specialNote = 'Unprecedented readings require further analysis.';
+                } else if (count < 100) {
+                    message = `${count} Connections Detected`;
+                    description = 'WARNING: System approaching maximum capacity.';
+                    specialNote = 'CRITICAL: Off-scale measurements detected.';
+                } else {
+                    message = '100+ Connections Detected';
+                    description = 'LEGENDARY STATUS: Maximum system capacity reached.';
+                    specialNote = 'RECORDING FOR RESEARCH PURPOSES';
+                }
+                
+                this.results.innerHTML = `
+                    <div class="line-count">${count}</div>
+                    <h3>${message}</h3>
+                    <p>${description}</p>
+                    ${specialNote ? `<p style="color: #ff8080; margin-top: 10px; font-weight: bold;">${specialNote}</p>` : ''}
+                    <p style="margin-top: 15px; font-size: 0.9em; color: #aaa;">
+                        Connection Density: ${Math.min(count * 4, 100)}% | 
+                        Last Activity: ${Math.floor(Math.random() * 30) + 1} days ago
+                    </p>
+                `;
+                
+                this.results.classList.remove('hidden');
+                this.updateStatus('S-Line scan complete. Analysis saved to quantum database.');
+            }
+
+            clearSLines() {
+                this.sLines.forEach(line => line.remove());
+                this.sLines = [];
+                this.results.classList.remove('overload');
+                this.results.classList.add('hidden');
+            }
+
+            reset() {
+                // Stop face detection
+                this.faceDetectionActive = false;
+                
+                // Clear all lines and results
+                this.clearSLines();
+                
+                // Stop camera stream if exists
+                if (this.video.srcObject) {
+                    this.video.srcObject.getTracks().forEach(track => track.stop());
+                    this.video.srcObject = null;
+                }
+                
+                // Reset UI state
+                this.cameraContainer.classList.add('hidden');
+                this.startBtn.classList.remove('hidden');
+                this.scanBtn.classList.add('hidden');
+                this.resetBtn.classList.add('hidden');
+                this.scanBtn.disabled = true;
+                this.isScanning = false;
+                
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Reset status
+                this.updateStatus('Scanner reset. Ready to initialize...');
+            }
+
+            loadUserHistory() {
+                const history = localStorage.getItem('sline_history');
+                return history ? JSON.parse(history) : {
+                    scanCount: 0,
+                    totalLines: 0,
+                    lastScan: null,
+                    maxLines: 0
+                };
+            }
+
+            saveUserHistory(lineCount) {
+                this.userHistory.scanCount++;
+                this.userHistory.totalLines += lineCount;
+                this.userHistory.lastScan = Date.now();
+                this.userHistory.maxLines = Math.max(this.userHistory.maxLines, lineCount);
+                
+                localStorage.setItem('sline_history', JSON.stringify(this.userHistory));
+            }
+
+            updateStatus(message, loading = false) {
+                this.status.textContent = message;
+                this.status.classList.toggle('loading', loading);
+            }
+
+            delay(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            calculateEyeDistance(landmarks) {
+                const leftEye = landmarks.getLeftEye();
+                const rightEye = landmarks.getRightEye();
+                const leftCenter = this.getCenterPoint(leftEye);
+                const rightCenter = this.getCenterPoint(rightEye);
+                return Math.sqrt(Math.pow(rightCenter.x - leftCenter.x, 2) + Math.pow(rightCenter.y - leftCenter.y, 2));
+            }
+
+            calculateSymmetry(landmarks) {
+                const nose = landmarks.getNose();
+                const leftEye = landmarks.getLeftEye();
+                const rightEye = landmarks.getRightEye();
+                
+                const noseCenter = this.getCenterPoint(nose);
+                const leftEyeCenter = this.getCenterPoint(leftEye);
+                const rightEyeCenter = this.getCenterPoint(rightEye);
+                
+                const leftDistance = Math.abs(noseCenter.x - leftEyeCenter.x);
+                const rightDistance = Math.abs(noseCenter.x - rightEyeCenter.x);
+                
+                return 1 - Math.abs(leftDistance - rightDistance) / Math.max(leftDistance, rightDistance);
+            }
+
+            getCenterPoint(points) {
+                const sum = points.reduce((acc, point) => ({ x: acc.x + point.x, y: acc.y + point.y }), { x: 0, y: 0 });
+                return { x: sum.x / points.length, y: sum.y / points.length };
+            }
+
+            calculateBehaviorScore() {
+                const scanTime = Date.now();
+                const timeSinceStart = this.userHistory.lastScan ? scanTime - this.userHistory.lastScan : 0;
+                
+                let score = 50;
+                
+                if (timeSinceStart < 30000) score += 20;
+                else if (timeSinceStart < 300000) score += 10;
+                
+                score += Math.min(this.userHistory.scanCount * 2, 20);
+                
+                return Math.min(score, 100);
+            }
+
+            scoreToLineCount(score) {
+                const rand = Math.random();
+                
+                if (score < 15 || rand < 0.15) return 0;
+                if (score < 35 || rand < 0.35) return Math.floor(Math.random() * 2) + 1;
+                if (score < 60 || rand < 0.25) return Math.floor(Math.random() * 3) + 2;
+                if (score < 75 || rand < 0.15) return Math.floor(Math.random() * 5) + 5;
+                if (score < 90 || rand < 0.07) return Math.floor(Math.random() * 15) + 10;
+                if (score < 98 || rand < 0.025) return Math.floor(Math.random() * 25) + 25;
+                if (rand < 0.005) return Math.floor(Math.random() * 25) + 75;
+                return Math.floor(Math.random() * 50) + 50;
+            }
+        }
+
+        // Initialize the S-Line Detector when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new SLineDetector();
+        });
+    </script>
+</body>
+</html>
